@@ -1,4 +1,34 @@
 #!/bin/bash
+#
+# devcontainer-path-to-host.sh
+#
+# Description:
+#   Converts a path inside a devcontainer to its corresponding path on the host system.
+#   This is useful when you need to reference host filesystem paths from within a devcontainer,
+#   such as when launching other applications or sharing paths with host-based tools.
+#
+# Features:
+#   - Automatically detects and handles Windows/Unix path separator differences
+#   - Resolves relative paths to absolute paths
+#   - Works with any mounted directory in the devcontainer
+#
+# Requirements:
+#   - Docker CLI (to inspect container mounts)
+#   - jq (for JSON parsing)
+#   - Must be run from within a devcontainer
+#
+# Usage:
+#   ./devcontainer-path-to-host.sh <directory-path>
+#
+# Examples:
+#   ./devcontainer-path-to-host.sh /workspaces/myproject
+#   ./devcontainer-path-to-host.sh .
+#   ./devcontainer-path-to-host.sh ../other-project
+#
+# Output:
+#   Prints the host system path corresponding to the given devcontainer path
+#   Exit code 0 on success, 1 on error
+#
 
 # Check if argument is provided
 if [ $# -eq 0 ]; then
