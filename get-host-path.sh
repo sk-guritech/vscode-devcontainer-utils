@@ -1,11 +1,12 @@
 #!/bin/bash
 #
-# devcontainer-path-to-host.sh
+# get-host-path.sh
 #
 # Description:
-#   Converts a path inside a devcontainer to its corresponding path on the host system.
-#   This is useful when you need to reference host filesystem paths from within a devcontainer,
-#   such as when launching other applications or sharing paths with host-based tools.
+#   Gets the host system path for a given path inside a devcontainer.
+#   This script resolves how a devcontainer path maps to the actual host filesystem,
+#   which is useful when you need to pass file paths to host applications or
+#   reference files from the host perspective.
 #
 # Features:
 #   - Automatically detects and handles Windows/Unix path separator differences
@@ -18,12 +19,12 @@
 #   - Must be run from within a devcontainer
 #
 # Usage:
-#   ./devcontainer-path-to-host.sh <directory-path>
+#   ./get-host-path.sh <path>
 #
 # Examples:
-#   ./devcontainer-path-to-host.sh /workspaces/myproject
-#   ./devcontainer-path-to-host.sh .
-#   ./devcontainer-path-to-host.sh ../other-project
+#   ./get-host-path.sh /workspaces/myproject     # → C:\Users\name\projects\myproject
+#   ./get-host-path.sh .                         # → Current directory's host path
+#   ./get-host-path.sh ../other-project          # → Relative path resolved to host path
 #
 # Output:
 #   Prints the host system path corresponding to the given devcontainer path
@@ -32,7 +33,7 @@
 
 # Check if argument is provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <directory-path>"
+    echo "Usage: $0 <path>"
     echo "Example: $0 /workspaces/manager"
     exit 1
 fi
