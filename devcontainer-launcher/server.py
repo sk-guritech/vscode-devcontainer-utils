@@ -4,6 +4,7 @@ import subprocess
 import threading
 import re
 import sys
+import signal
 import argparse
 
 def run_devcontainer_up(folder_path):
@@ -39,17 +40,34 @@ def handle_client(conn, addr):
         conn.send(container_id.encode())
         
     except Exception as e:
-        conn.send(f"error: {str(e)}".encode())
+        try:
+            conn.send(f"error: {str(e)}".encode())
+        except:
+            pass
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except:
+            pass
+
+def signal_handler(sig, frame):
+    print("\nShutting down server...")
+    sys.exit(0)
 
 def main():
     parser = argparse.ArgumentParser(description='DevContainer TCP Server')
     parser.add_argument('--port', type=int, default=9999, help='Port to listen on (default: 9999)')
     args = parser.parse_args()
     
+    # Register signal handler for clean shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    # Set timeout for accept() to allow checking for interrupts
+    server.settimeout(1.0)
+    
     server.bind(('0.0.0.0', args.port))
     server.listen(5)
     
@@ -58,12 +76,23 @@ def main():
     
     try:
         while True:
-            conn, addr = server.accept()
-            thread = threading.Thread(target=handle_client, args=(conn, addr))
-            thread.start()
+            try:
+                conn, addr = server.accept()
+                thread = threading.Thread(target=handle_client, args=(conn, addr))
+                thread.daemon = True  # Make thread daemon so it doesn't block shutdown
+                thread.start()
+            except socket.timeout:
+                continue  # Allow checking for interrupts
+            except OSError:
+                break  # Socket was closed
     except KeyboardInterrupt:
-        print("\nShutting down server...")
-        server.close()
+        pass
+    finally:
+        try:
+            server.close()
+        except:
+            pass
+        print("Server stopped.")
         sys.exit(0)
 
 if __name__ == '__main__':
