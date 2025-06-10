@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# launcher.sh - Launch a new devcontainer from within an existing devcontainer
+#
+# This script converts a devcontainer path to its host equivalent and sends it
+# to the devcontainer launcher server running on the host machine.
+#
 
 # Check if argument is provided
 if [ $# -eq 0 ]; then
