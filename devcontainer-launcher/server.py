@@ -9,26 +9,54 @@ import argparse
 
 def run_devcontainer_up(folder_path):
     try:
-        result = subprocess.run(['devcontainer', 'up', '--workspace-folder', folder_path], 
-                              capture_output=True, 
-                              text=True, 
-                              timeout=300,
-                              shell=True,
-                              encoding='utf-8',
-                              errors='replace')
+        print(f"Starting devcontainer for: {folder_path}")
         
-        # container idを抽出
-        match = re.search(r'"containerId":"([a-f0-9]+)"', result.stdout)
-        if match:
-            return match.group(1)
+        # Popenを使ってリアルタイムで出力を表示
+        process = subprocess.Popen(
+            ['devcontainer', 'up', '--workspace-folder', folder_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            errors='replace'
+        )
         
-        # 別のパターンも試す
-        match = re.search(r'([a-f0-9]{12,})', result.stdout)
-        if match:
-            return match.group(1)
+        output = []
+        container_id = None
+        
+        # リアルタイムで出力を表示
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                line = line.rstrip()
+                print(f"[devcontainer] {line}")
+                output.append(line)
+                
+                # container idを抽出
+                match = re.search(r'"containerId":"([a-f0-9]+)"', line)
+                if match:
+                    container_id = match.group(1)
+                else:
+                    # 別のパターンも試す
+                    match = re.search(r'([a-f0-9]{12,})', line)
+                    if match:
+                        container_id = match.group(1)
+        
+        process.wait()
+        
+        if process.returncode != 0:
+            print(f"devcontainer command failed with exit code: {process.returncode}")
+            return f"error: devcontainer failed with exit code {process.returncode}"
+        
+        if container_id:
+            print(f"Container ID found: {container_id}")
+            return container_id
+        else:
+            full_output = '\n'.join(output)
+            print("Warning: Container ID not found in output")
+            return f"unknown: {full_output}"
             
-        return f"unknown: {result.stdout}"
     except Exception as e:
+        print(f"Exception occurred: {str(e)}")
         return f"error: {str(e)}"
 
 def handle_client(conn, addr):
