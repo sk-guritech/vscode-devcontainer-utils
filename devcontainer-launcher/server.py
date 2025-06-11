@@ -6,19 +6,71 @@ import re
 import sys
 import signal
 import argparse
+import os
+import platform
+
+def find_devcontainer_command():
+    """Find the devcontainer command based on platform"""
+    if platform.system() == 'Windows':
+        # First, check if devcontainer CLI is directly available
+        try:
+            result = subprocess.run(['where', 'devcontainer'], capture_output=True, text=True)
+            if result.returncode == 0:
+                devcontainer_path = result.stdout.strip().split('\n')[0]
+                if devcontainer_path:
+                    return [devcontainer_path]
+        except:
+            pass
+        
+        # Check common devcontainer CLI locations on Windows
+        possible_devcontainer_paths = []
+        
+        # Try to get npm prefix
+        try:
+            npm_prefix = subprocess.run(['npm', 'prefix', '-g'], capture_output=True, text=True).stdout.strip()
+            if npm_prefix:
+                possible_devcontainer_paths.extend([
+                    os.path.join(npm_prefix, 'node_modules', '.bin', 'devcontainer.cmd'),
+                    os.path.join(npm_prefix, 'node_modules', '.bin', 'devcontainer'),
+                ])
+        except:
+            pass
+        
+        # Add default npm locations
+        possible_devcontainer_paths.extend([
+            os.path.join(os.environ.get('APPDATA', ''), 'npm', 'devcontainer.cmd'),
+            os.path.join(os.environ.get('APPDATA', ''), 'npm', 'devcontainer'),
+        ])
+        
+        for path in possible_devcontainer_paths:
+            if os.path.exists(path):
+                return [path]
+        
+        # If not found, try direct devcontainer command (might be in PATH)
+        return ['devcontainer']
+    else:
+        # On Unix-like systems, use devcontainer directly
+        return ['devcontainer']
 
 def run_devcontainer_up(folder_path):
     try:
         print(f"Starting devcontainer for: {folder_path}")
         
+        # Get the appropriate command
+        devcontainer_cmd = find_devcontainer_command()
+        cmd = devcontainer_cmd + ['up', '--workspace-folder', folder_path]
+        
+        print(f"Running command: {' '.join(cmd)}")
+        
         # Popenを使ってリアルタイムで出力を表示
         process = subprocess.Popen(
-            ['devcontainer', 'up', '--workspace-folder', folder_path],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
-            errors='replace'
+            errors='replace',
+            shell=(platform.system() == 'Windows')  # Use shell on Windows
         )
         
         output = []
