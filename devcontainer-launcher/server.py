@@ -60,6 +60,18 @@ def run_devcontainer_up(folder_path):
         devcontainer_cmd = find_devcontainer_command()
         cmd = devcontainer_cmd + ['up', '--workspace-folder', folder_path]
         
+        # Add SSH key mount if github key exists
+        ssh_key_path = os.path.expanduser('~/.ssh/github')
+        if os.path.exists(ssh_key_path):
+            cmd.extend(['--mount', f'type=bind,source={ssh_key_path},target=/tmp/ssh_key'])
+            print(f"Adding SSH key mount to /tmp: {ssh_key_path}")
+        
+        # Add .gitconfig mount if exists
+        gitconfig_path = os.path.expanduser('~/.gitconfig')
+        if os.path.exists(gitconfig_path):
+            cmd.extend(['--mount', f'type=bind,source={gitconfig_path},target=/tmp/gitconfig'])
+            print(f"Adding .gitconfig mount to /tmp: {gitconfig_path}")
+        
         print(f"Running command: {' '.join(cmd)}")
         
         # Popenを使ってリアルタイムで出力を表示
