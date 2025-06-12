@@ -63,14 +63,20 @@ def run_devcontainer_up(folder_path):
         # Add SSH key mount if github key exists
         ssh_key_path = os.path.expanduser('~/.ssh/github')
         if os.path.exists(ssh_key_path):
-            cmd.extend(['--mount', f'type=bind,source={ssh_key_path},target=/tmp/ssh_key'])
-            print(f"Adding SSH key mount to /tmp: {ssh_key_path}")
+            cmd.extend(['--mount', f'type=bind,source={ssh_key_path},target=/home/vscode/.ssh/id_rsa'])
+            print(f"Adding SSH key mount to /home/vscode/.ssh/id_rsa: {ssh_key_path}")
         
         # Add .gitconfig mount if exists
         gitconfig_path = os.path.expanduser('~/.gitconfig')
         if os.path.exists(gitconfig_path):
-            cmd.extend(['--mount', f'type=bind,source={gitconfig_path},target=/tmp/gitconfig'])
-            print(f"Adding .gitconfig mount to /tmp: {gitconfig_path}")
+            cmd.extend(['--mount', f'type=bind,source={gitconfig_path},target=/home/vscode/.gitconfig'])
+            print(f"Adding .gitconfig mount to /home/vscode/.gitconfig: {gitconfig_path}")
+        
+        # Add GitHub CLI config mount if exists
+        gh_config_path = os.path.expanduser('~/.config/gh')
+        if os.path.exists(gh_config_path):
+            cmd.extend(['--mount', f'type=bind,source={gh_config_path},target=/home/vscode/.config/gh'])
+            print(f"Adding GitHub CLI config mount to /home/vscode/.config/gh: {gh_config_path}")
         
         print(f"Running command: {' '.join(cmd)}")
         
@@ -113,6 +119,35 @@ def run_devcontainer_up(folder_path):
         
         if container_id:
             print(f"Container ID found: {container_id}")
+            
+            # Fix permissions for mounted directories and add known_hosts
+            print("Fixing permissions for mounted directories and setting up known_hosts...")
+            try:
+                # First check if vscode user exists, then fix permissions
+                subprocess.run([
+                    'docker', 'exec', container_id, 
+                    'bash', '-c', 
+                    'if id vscode &>/dev/null; then mkdir -p /home/vscode/.ssh && chown -R vscode:vscode /home/vscode/.ssh; fi'
+                ], capture_output=True)
+                
+                # Fix GitHub CLI config permissions
+                subprocess.run([
+                    'docker', 'exec', container_id,
+                    'bash', '-c',
+                    'if id vscode &>/dev/null && [ -d /home/vscode/.config/gh ]; then chown -R vscode:vscode /home/vscode/.config/gh; fi'
+                ], capture_output=True)
+                
+                # Add GitHub to known_hosts as vscode user
+                subprocess.run([
+                    'docker', 'exec', container_id,
+                    'su', '-', 'vscode', '-c',
+                    'ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null'
+                ], capture_output=True)
+                
+                print("Permissions fixed and known_hosts updated successfully")
+            except Exception as e:
+                print(f"Warning: Failed to fix permissions: {e}")
+            
             return container_id
         else:
             full_output = '\n'.join(output)
